@@ -1,0 +1,50 @@
+name: Sync (daily diff)
+
+on:
+  schedule:
+    - cron: "0 20 * * *" # 毎日 05:00 JST
+  workflow_dispatch:
+
+# 月次フル(sync.yml)と同一テーブルを書き換えるため、同じ concurrency group で直列化する
+concurrency:
+  group: houjin-build
+  cancel-in-progress: false
+
+jobs:
+  sync-daily:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONUNBUFFERED: "1"
+      HOUJIN_MODE: incremental
+      NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      QUERIA_S3_ENDPOINT: https://${{ secrets.CF_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      QUERIA_S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+      QUERIA_S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+      QUERIA_S3_BUCKET: ${{ vars.S3_BUCKET }}
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync
+
+      # 差分(diff_YYYYMMDD)の未取込分のみ取り込み snapshot まで実行する。
+      # スキーマは変わらないため catalog 再ビルドは起こさない(月次フルに任せる)。
+      - name: Apply daily diffs
+        run: uv run python main.py default
+
+  notify-failure:
+    runs-on: ubuntu-latest
+    needs: sync-daily
+    if: failure()
+    steps:
+      - name: Notify Discord on failure
+        run: |
+          curl -s -H "Content-Type: application/json" \
+            -d "{\"embeds\": [{\"title\": \"Sync (daily diff) Failed\", \"url\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\", \"color\": 15158332, \"fields\": [{\"name\": \"Repository\", \"value\": \"${{ github.repository }}\"}, {\"name\": \"Run\", \"value\": \"${{ github.run_id }}\"}]}]}" \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}"

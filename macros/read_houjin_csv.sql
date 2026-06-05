@@ -1,17 +1,21 @@
-{# 国税庁 法人番号 全件データ (00_zenkoku_all_YYYYMMDD.csv)
-   https://www.houjin-bangou.nta.go.jp/download/zenken/
-   Unicode(UTF-8), ヘッダーなし, 30カラム, BOM なし。
+{# 国税庁 法人番号 CSV (全件 00_zenkoku_all_YYYYMMDD.csv / 差分 diff_YYYYMMDD.csv)
+   https://www.houjin-bangou.nta.go.jp/download/
+   Unicode(UTF-8), ヘッダーなし, 30カラム, BOM なし。全件・差分とも同一スキーマ。
    英語名フィールドに二重引用符のエスケープ ("K" → ""K"") が含まれるため、
    quote / escape を明示しないとパースに失敗する。
-   url には main.py が解決した zip:// パスを渡す
-   (例: zip:///abs/path/00_zenkoku_all_20260529.zip/00_zenkoku_all_20260529.csv)。#}
-{% macro read_houjin_csv(url) %}
-select *
+   paths は main.py が解決した zip:// パスのリスト
+   (全件は1要素、差分は対象日数分)。filename からファイル名の日付(YYYYMMDD)を
+   取り出し _source_date とする (差分の取り込み済み日付の判定に使う)。 #}
+{% macro read_houjin_csv(paths) %}
+select
+    * exclude(filename),
+    strptime(regexp_extract(filename, '(\d{8})'), '%Y%m%d')::DATE as _source_date
 from read_csv(
-    '{{ url }}',
+    [{% for p in paths %}'{{ p }}'{{ "," if not loop.last }}{% endfor %}],
     header=false,
     quote='"',
     escape='"',
+    filename=true,
     columns={
         'seq':                        'VARCHAR',
         'corporate_number':           'VARCHAR',

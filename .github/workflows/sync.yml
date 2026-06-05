@@ -9,8 +9,9 @@ on:
     - cron: "0 19 1 * *" # 毎月1日 04:00 JST
   workflow_dispatch:
 
+# 日次差分(sync-daily.yml)と同一テーブルを書き換えるため group を揃えて直列化する
 concurrency:
-  group: sync
+  group: houjin-build
   cancel-in-progress: false
 
 jobs:

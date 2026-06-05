@@ -64,3 +64,5 @@ models:
         description: フリガナ
       - name: hihyoji
         description: 検索対象除外（0=対象、1=除外）
+      - name: _source_date
+        description: 取り込み元ファイルの日付（全件は前月末日、差分は diff_YYYYMMDD の日付）。差分の未取込分の判定に使う
