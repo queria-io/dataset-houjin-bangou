@@ -1,0 +1,93 @@
+version: 2
+
+models:
+  - name: mart_houjin_bangou
+    description: 国税庁が公表する全国の法人番号（現存法人の最新情報のみ）。検索対象除外・登記閉鎖済みを除いた約500万法人を収録
+    config:
+      meta:
+        title: 国税庁法人番号
+        published: true
+        source_url: "https://www.houjin-bangou.nta.go.jp/"
+        credit: >-
+          出典：国税庁法人番号公表サイト（国税庁）。
+          公共データ利用規約（第1.0版）に準拠した利用条件のもとで再配布しています。
+          最新性・正確性・完全性等が保証されたものではありません
+    columns:
+      - name: corporate_number
+        meta:
+          title: 法人番号
+          description: 13桁
+      - name: seq
+        meta:
+          title: 一連番号
+          description: ファイル内の連番（恒久的な識別子ではない）
+      - name: process
+        meta:
+          title: 処理区分
+          description: 01=新規、11=商号変更、12=所在地変更、21=登記記録の閉鎖等 等
+      - name: correct
+        meta:
+          title: 訂正区分
+          description: 0=訂正以外、1=訂正
+      - name: update_date
+        meta:
+          title: 更新年月日
+      - name: change_date
+        meta:
+          title: 変更年月日
+      - name: name
+        meta:
+          title: 商号又は名称
+      - name: kind
+        meta:
+          title: 法人種別
+          description: 101=国の機関、201=地方公共団体、301=株式会社、302=有限会社、303=合名会社、304=合資会社、305=合同会社、399=その他の設立登記法人、401=外国会社等、499=その他
+      - name: prefecture_name
+        meta:
+          title: 都道府県名
+      - name: city_name
+        meta:
+          title: 市区町村名
+      - name: street_number
+        meta:
+          title: 丁目番地等
+      - name: prefecture_code
+        meta:
+          title: 都道府県コード
+          description: 2桁（JIS X0401）
+      - name: city_code
+        meta:
+          title: 市区町村コード
+          description: 3桁（JIS X0402 の市区町村部分）
+      - name: lg_code
+        meta:
+          title: 全国地方公共団体コード
+          description: 6桁（JIS X0402、チェックディジット付き）。dataset-lg-code / dataset-zipcode と結合できる
+      - name: post_code
+        meta:
+          title: 郵便番号
+          description: 7桁
+      - name: address_outside
+        meta:
+          title: 国外所在地
+      - name: change_cause
+        meta:
+          title: 変更事由の詳細
+      - name: assignment_date
+        meta:
+          title: 法人番号指定年月日
+      - name: name_en
+        meta:
+          title: 商号又は名称（英語）
+      - name: prefecture_en
+        meta:
+          title: 国内所在地都道府県（英語）
+      - name: city_street_en
+        meta:
+          title: 国内所在地市区町村丁目番地等（英語）
+      - name: address_outside_en
+        meta:
+          title: 国外所在地（英語）
+      - name: furigana
+        meta:
+          title: フリガナ

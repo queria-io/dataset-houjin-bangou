@@ -1,0 +1,26 @@
+[project]
+name = "dataset-houjin-bangou"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "dbt-core>=1.11.2",
+    "dbt-duckdb>=1.10.0",
+    "duckdb==1.5.2",
+    "boto3>=1.35",
+    "httpx>=0.27",
+]
+
+[tool.queria]
+name = "houjin_bangou"
+title = "国税庁法人番号"
+description = "国税庁が公表している全国の法人番号（全件データ）。約500万の現存法人の商号・所在地・法人種別を収録"
+cover = "🏢"
+tags = ["法人番号", "企業マスタ", "国税庁"]
+license = "公共データ利用規約（第1.0版）準拠（CC BY 4.0 互換、出典明記が必要）"
+license_url = "https://www.houjin-bangou.nta.go.jp/riyokiyaku/"
+repository_url = "https://github.com/flo8s/dataset-houjin-bangou"
+source_url = "https://www.houjin-bangou.nta.go.jp/"
+schedule = "monthly"
+
+[tool.queria.schemas.main]
+title = "法人情報マスタ"

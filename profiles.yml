@@ -1,0 +1,45 @@
+houjin_bangou:
+  target: default
+  outputs:
+    default:
+      type: duckdb
+      path: ":memory:"
+      threads: 4
+      extensions:
+        - httpfs
+        - postgres
+        - ducklake
+        - name: zipfs
+          repo: community
+      secrets:
+        - type: r2
+          key_id: "{{ env_var('QUERIA_S3_ACCESS_KEY_ID', '') }}"
+          secret: "{{ env_var('QUERIA_S3_SECRET_ACCESS_KEY', '') }}"
+          account_id: "{{ env_var('CF_ACCOUNT_ID', '') }}"
+      attach:
+        - path: "ducklake:postgres:{{ env_var('NEON_DATABASE_URL', '') }}"
+          alias: houjin_bangou
+          options:
+            data_path: "r2://{{ env_var('QUERIA_S3_BUCKET', '') }}/houjin_bangou/ducklake.duckdb.files/"
+            meta_schema: "houjin_bangou"
+    local:
+      type: duckdb
+      path: ":memory:"
+      threads: 4
+      extensions:
+        - httpfs
+        - postgres
+        - ducklake
+        - name: zipfs
+          repo: community
+      secrets:
+        - type: r2
+          key_id: "{{ env_var('QUERIA_S3_ACCESS_KEY_ID', '') }}"
+          secret: "{{ env_var('QUERIA_S3_SECRET_ACCESS_KEY', '') }}"
+          account_id: "{{ env_var('CF_ACCOUNT_ID', '') }}"
+      attach:
+        - path: "ducklake:postgres:{{ env_var('NEON_DATABASE_URL', '') }}"
+          alias: houjin_bangou
+          options:
+            data_path: "r2://{{ env_var('QUERIA_DEV_S3_BUCKET', 'queria-dev') }}/houjin_bangou/ducklake.duckdb.files/"
+            meta_schema: "dev_houjin_bangou"

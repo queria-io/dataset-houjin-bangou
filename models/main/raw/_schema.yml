@@ -1,0 +1,66 @@
+version: 2
+
+models:
+  - name: raw_houjin_bangou
+    description: 国税庁 法人番号 全件データ（00_zenkoku_all_YYYYMMDD.csv）の生データ。全30列、すべて VARCHAR で取り込む
+    columns:
+      - name: seq
+        description: 一連番号（ファイル内の連番。レコードの恒久的識別子ではない）
+      - name: corporate_number
+        description: 法人番号（13桁）
+      - name: process
+        description: 処理区分（01=新規、11=商号変更、12=所在地変更、21=登記記録の閉鎖等、71/72=吸収合併、81=登記閉鎖、99=削除 等）
+      - name: correct
+        description: 訂正区分（0=訂正以外、1=訂正）
+      - name: update_date
+        description: 更新年月日（YYYY-MM-DD）
+      - name: change_date
+        description: 変更年月日（YYYY-MM-DD）
+      - name: name
+        description: 商号又は名称
+      - name: name_image_id
+        description: 商号又は名称イメージID
+      - name: kind
+        description: 法人種別（101=国の機関、201=地方公共団体、301=株式会社、302=有限会社、303=合名会社、304=合資会社、305=合同会社、399=その他の設立登記法人、401=外国会社等、499=その他）
+      - name: prefecture_name
+        description: 国内所在地（都道府県名）
+      - name: city_name
+        description: 国内所在地（市区町村名）
+      - name: street_number
+        description: 国内所在地（丁目番地等）
+      - name: address_image_id
+        description: 国内所在地イメージID
+      - name: prefecture_code
+        description: 都道府県コード（2桁、JIS X0401。国外所在地のみの法人では NULL）
+      - name: city_code
+        description: 市区町村コード（3桁、JIS X0402 の市区町村部分）
+      - name: post_code
+        description: 郵便番号（7桁）
+      - name: address_outside
+        description: 国外所在地
+      - name: address_outside_image_id
+        description: 国外所在地イメージID
+      - name: close_date
+        description: 登記記録の閉鎖等年月日（YYYY-MM-DD）
+      - name: close_cause
+        description: 登記記録の閉鎖等の事由（01=清算結了等、11=合併による消滅、21=登記官による閉鎖、31=その他）
+      - name: successor_corporate_number
+        description: 承継先法人番号（合併等の場合）
+      - name: change_cause
+        description: 変更事由の詳細
+      - name: assignment_date
+        description: 法人番号指定年月日（YYYY-MM-DD）
+      - name: latest
+        description: 最新履歴（1=最新、0=過去履歴。全件データには最新履歴のみ収録され常に1）
+      - name: name_en
+        description: 商号又は名称（英語表記）
+      - name: prefecture_en
+        description: 国内所在地（都道府県、英語表記）
+      - name: city_street_en
+        description: 国内所在地（市区町村丁目番地等、英語表記）
+      - name: address_outside_en
+        description: 国外所在地（英語表記）
+      - name: furigana
+        description: フリガナ
+      - name: hihyoji
+        description: 検索対象除外（0=対象、1=除外）

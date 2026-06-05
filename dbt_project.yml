@@ -1,0 +1,26 @@
+name: "houjin_bangou"
+version: "1.0.0"
+
+profile: "houjin_bangou"
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros", "shared/macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  houjin_bangou:
+    +database: houjin_bangou
+    main:
+      raw:
+        +materialized: table
+      stg:
+        +materialized: view
+      mart:
+        +materialized: table
