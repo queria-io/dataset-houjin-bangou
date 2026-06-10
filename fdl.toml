@@ -1,0 +1,27 @@
+name = "houjin_bangou"
+command = "python main.py"
+
+[targets.default]
+url = "s3://${FDL_S3_BUCKET}"
+public_url = "https://data.queria.io"
+s3_endpoint = "${FDL_S3_ENDPOINT}"
+s3_access_key_id = "${FDL_S3_ACCESS_KEY_ID}"
+s3_secret_access_key = "${FDL_S3_SECRET_ACCESS_KEY}"
+
+[targets.local]
+url = "~/.local/share/fdl"
+public_url = "http://localhost:4001"
+
+[meta]
+license = "公共データ利用規約（第1.0版）準拠（CC BY 4.0 互換、出典明記が必要）"
+license_url = "https://www.houjin-bangou.nta.go.jp/riyokiyaku/"
+title = "国税庁法人番号"
+description = "国税庁が公表している全国の法人番号（全件データ）。約500万の現存法人の商号・所在地・法人種別を収録"
+cover = "🏢"
+tags = ['法人番号', '企業マスタ', '国税庁']
+repository_url = "https://github.com/flo8s/dataset-houjin-bangou"
+source_url = "https://www.houjin-bangou.nta.go.jp/"
+schedule = "monthly"
+
+[meta.schemas.main]
+title = "法人情報マスタ"
