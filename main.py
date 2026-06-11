@@ -1,4 +1,4 @@
-"""国税庁 法人番号 データの取得 + dbt build + snapshot pipeline.
+"""国税庁 法人番号 データの取得 + dbt build パイプライン。
 
 取得方式は2系統:
   full        前月末日時点の全件 zip (00_zenkoku_all_YYYYMMDD.zip, 約250MB) を取得し
@@ -12,36 +12,27 @@
 モードは環境変数 HOUJIN_MODE (full / incremental, 既定 full) で指定する。
 incremental でも raw が存在しなければ full にフォールバックする (初回ビルド対策)。
 
-snapshot は dbt build と同一プロセスで実行する必要がある
-(dataset-shared/README.md の制約を参照)。
+fdl の DuckLake カタログ(FDL_* 環境変数で注入)に対して dbt build を実行する。
+R2 への公開は fdl run/sync の publish が担う。incremental は公開済み raw との
+差分判定を行うため、ビルド前に fdl pull でカタログを取り込んでおく必要がある。
 """
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import logging
 import os
 import re
 import sys
 import tempfile
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 
 import duckdb
 import httpx
 from dbt.cli.main import dbtRunner
-
-SHARED_SCRIPTS = Path(__file__).resolve().parent / "shared" / "scripts"
-sys.path.insert(0, str(SHARED_SCRIPTS))
-from queria_config import load_target  # noqa: E402
-
-_spec = importlib.util.spec_from_file_location(
-    "snapshot_to_r2", SHARED_SCRIPTS / "snapshot-to-r2.py"
-)
-assert _spec and _spec.loader
-snapshot_to_r2 = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(snapshot_to_r2)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -164,38 +155,68 @@ def download_diffs(client: httpx.Client, dest_dir: Path, after: date | None) -> 
     return urls
 
 
-def _max_source_date(target_name: str) -> date | None:
-    """既存 raw_houjin_bangou の最大 _source_date を返す (無ければ None)。"""
-    target = load_target(target_name)
+@contextmanager
+def _ducklake_connect(*, read_only: bool = False) -> Generator[duckdb.DuckDBPyConnection]:
+    """Open a fresh DuckDB session with the fdl-managed DuckLake attached.
+
+    Uses the ``FDL_*`` environment variables injected by ``fdl run``: the local
+    SQLite live catalog (``FDL_CATALOG_PATH``) and the data location
+    (``FDL_DATA_URL``, R2 for S3 targets).
+    """
+    catalog_path = os.environ["FDL_CATALOG_PATH"]
+    data_url = os.environ["FDL_DATA_URL"]
     conn = duckdb.connect(":memory:")
     try:
         conn.execute("INSTALL ducklake; LOAD ducklake;")
-        conn.execute("INSTALL postgres; LOAD postgres;")
-        conn.execute("INSTALL httpfs; LOAD httpfs;")
-        conn.execute(
-            "CREATE SECRET r2 (TYPE r2, KEY_ID ?, SECRET ?, ACCOUNT_ID ?)",
-            [target.s3_access_key_id, target.s3_secret_access_key, target.cf_account_id],
+        conn.execute("INSTALL sqlite; LOAD sqlite;")
+        if data_url.startswith("s3://"):
+            conn.execute("INSTALL httpfs; LOAD httpfs;")
+            conn.execute(
+                "CREATE SECRET (TYPE s3, KEY_ID ?, SECRET ?, ENDPOINT ?, "
+                "URL_STYLE 'path', REGION 'auto')",
+                [
+                    os.environ["FDL_S3_ACCESS_KEY_ID"],
+                    os.environ["FDL_S3_SECRET_ACCESS_KEY"],
+                    os.environ["FDL_S3_ENDPOINT_HOST"],
+                ],
+            )
+        opts = (
+            f"DATA_PATH '{data_url}', OVERRIDE_DATA_PATH true, "
+            f"META_TYPE 'sqlite', META_JOURNAL_MODE 'WAL', BUSY_TIMEOUT 5000"
         )
+        if read_only:
+            opts += ", READ_ONLY"
         conn.execute(
-            f"ATTACH '{target.ducklake_uri}' AS \"{target.dataset}\" "
-            f"(DATA_PATH '{target.data_path}', META_SCHEMA '{target.meta_schema}', READ_ONLY)"
+            f"ATTACH 'ducklake:{catalog_path}' AS houjin_bangou ({opts})"
         )
-        row = conn.execute(
-            f'SELECT max(_source_date) FROM "{target.dataset}".main.raw_houjin_bangou'
-        ).fetchone()
-        return row[0] if row and row[0] else None
+        yield conn
+    finally:
+        conn.close()
+
+
+def _max_source_date() -> date | None:
+    """既存 raw_houjin_bangou の最大 _source_date を返す (無ければ None)。
+
+    fdl pull 済みのローカルカタログ(=公開済みデータ)に対する読み取り専用の
+    差分判定。raw が未作成 (初回ビルド等) なら None を返し full にフォールバック
+    させる。
+    """
+    try:
+        with _ducklake_connect(read_only=True) as conn:
+            row = conn.execute(
+                "SELECT max(_source_date) FROM houjin_bangou.main.raw_houjin_bangou"
+            ).fetchone()
+            return row[0] if row and row[0] else None
     except duckdb.Error as e:
         logger.info("raw_houjin_bangou 未作成とみなす (%s)", e.__class__.__name__)
         return None
-    finally:
-        conn.close()
 
 
 def main() -> None:
     target = os.environ.get("DBT_TARGET", sys.argv[1] if len(sys.argv) > 1 else "default")
     mode = os.environ.get("HOUJIN_MODE", "full").lower()
 
-    after = _max_source_date(target) if mode == "incremental" else None
+    after = _max_source_date() if mode == "incremental" else None
     if mode == "incremental" and after is None:
         logger.info("raw が存在しないため full にフォールバック")
         mode = "full"
@@ -225,8 +246,6 @@ def main() -> None:
             result = dbt.invoke(cmd)
             if not result.success:
                 raise SystemExit(f"dbt {' '.join(cmd)} failed")
-
-    snapshot_to_r2.run(target)
 
 
 if __name__ == "__main__":
