@@ -21,3 +21,4 @@ package-lock.yml
 # Environment
 .env
 .envrc
+dist/
