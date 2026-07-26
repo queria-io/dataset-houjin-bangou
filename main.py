@@ -12,9 +12,9 @@
 モードは環境変数 HOUJIN_MODE (full / incremental, 既定 full) で指定する。
 incremental でも raw が存在しなければ full にフォールバックする (初回ビルド対策)。
 
-fdl の DuckLake カタログ(FDL_* 環境変数で注入)に対して dbt build を実行する。
-R2 への公開は fdl run/sync の publish が担う。incremental は公開済み raw との
-差分判定を行うため、ビルド前に fdl pull でカタログを取り込んでおく必要がある。
+queria の DuckLake カタログ(QUERIA_* 環境変数で注入)に対して dbt build を実行する。
+R2 への公開は queria sync の push が担う。incremental は公開済み raw との
+差分判定を行うため、ビルド前に queria pull でカタログを取り込んでおく必要がある (queria sync が行う)。
 """
 
 from __future__ import annotations
