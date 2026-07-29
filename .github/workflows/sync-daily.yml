@@ -16,10 +16,8 @@ jobs:
     env:
       PYTHONUNBUFFERED: "1"
       HOUJIN_MODE: incremental
-      FDL_S3_ENDPOINT: https://${{ secrets.CF_ACCOUNT_ID }}.r2.cloudflarestorage.com
-      FDL_S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
-      FDL_S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
-      FDL_S3_BUCKET: ${{ vars.S3_BUCKET }}
+      # queria は誰のデータセットに書くのかをトークンから決める。R2 の鍵は渡さない
+      QUERIA_TOKEN: ${{ secrets.QUERIA_TOKEN }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -30,13 +28,13 @@ jobs:
           enable-cache: true
       - run: uv python install 3.13
 
-      # fdl (frozen-ducklake) はベータ開発中のため、常に最新版を使用する
-      - run: uv lock --upgrade-package frozen-ducklake && uv sync
+      # queria はベータ開発中のため、常に最新版を使用する
+      - run: uv lock --upgrade-package queria && uv sync
 
       # 差分(diff_YYYYMMDD)の未取込分のみ取り込み公開まで実行する。
       # スキーマは変わらないため catalog 再ビルドは起こさない(月次フルに任せる)。
       - name: Apply daily diffs
-        run: scripts/build.sh default
+        run: scripts/build.sh
 
   notify-failure:
     runs-on: ubuntu-latest
