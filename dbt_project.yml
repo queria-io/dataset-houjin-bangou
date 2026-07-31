@@ -10,11 +10,6 @@ seed-paths: ["seeds"]
 macro-paths: ["macros", "shared/macros"]
 snapshot-paths: ["snapshots"]
 
-# raw は incremental。--full-refresh で作り直すと、置き換え前のテーブルが
-# __dbt_backup として残ったまま run が終わり、そのまま公開されてしまう。
-# dbt 自身が次の run の冒頭で落とすものを、この run の後始末として済ませる
-on-run-end: "{{ drop_build_leftovers() }}"
-
 clean-targets:
   - "target"
   - "dbt_packages"
