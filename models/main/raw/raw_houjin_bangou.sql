@@ -7,9 +7,9 @@
     )
 }}
 
-{# --full-refresh のとき dbt は既存テーブルを __dbt_backup に退避して置き換えるが、
-   dbt-duckdb はその後始末の DROP を巻き戻してしまう (1.10.1)。残ったコピーはそのまま
-   公開されるのでここで落とす。名前は make_backup_relation で dbt に聞く。 #}
+{# --full-refresh で退避される __dbt_backup を落とす。dbt-duckdb 1.10.1 は後始末の
+   DROP を巻き戻すため残り、そのまま公開されてしまう (duckdb/dbt-duckdb#660、修正 #742 は
+   main のみで未リリース)。それを含むリリースが出たらこの post_hook は消してよい。 #}
 
 {# houjin_csv_paths は main.py が解決した CSV(zip://) パスのリスト。
    全件(--full-refresh): 全件 zip 1要素。全行 latest=1・法人番号ごと1行なのでそのまま。
