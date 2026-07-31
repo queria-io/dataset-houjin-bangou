@@ -3,8 +3,13 @@
         materialized='incremental',
         unique_key='corporate_number',
         incremental_strategy='delete+insert',
+        post_hook="drop table if exists {{ make_backup_relation(this, 'table') }}",
     )
 }}
+
+{# --full-refresh で退避される __dbt_backup を落とす。dbt-duckdb 1.10.1 は後始末の
+   DROP を巻き戻すため残り、そのまま公開されてしまう (duckdb/dbt-duckdb#660、修正 #742 は
+   main のみで未リリース)。それを含むリリースが出たらこの post_hook は消してよい。 #}
 
 {# houjin_csv_paths は main.py が解決した CSV(zip://) パスのリスト。
    全件(--full-refresh): 全件 zip 1要素。全行 latest=1・法人番号ごと1行なのでそのまま。
