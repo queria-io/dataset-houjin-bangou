@@ -9,6 +9,7 @@ fields:
   - name: corporate_number
     title: 法人番号
     description: 13桁
+    semantic: { role: entity, name: corporate_number }
   - name: seq
     title: 一連番号
     description: ファイル内の連番（恒久的な識別子ではない）
@@ -36,15 +37,18 @@ fields:
   - name: prefecture_code
     title: 都道府県コード
     description: 2桁（JIS X0401）
+    semantic: { role: entity, name: prefecture }
   - name: city_code
     title: 市区町村コード
     description: 3桁（JIS X0402 の市区町村部分）
   - name: lg_code
     title: 全国地方公共団体コード
     description: 6桁（JIS X0402、チェックディジット付き）。dataset-lg-code / dataset-zipcode と結合できる
+    semantic: { role: entity, name: city }
   - name: post_code
     title: 郵便番号
     description: 7桁
+    semantic: { role: entity, name: postal_code }
   - name: address_outside
     title: 国外所在地
   - name: change_cause
