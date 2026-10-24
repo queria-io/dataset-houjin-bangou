@@ -9,6 +9,7 @@ keywords:
   - 国税庁
 homepage: https://github.com/queria-io/dataset-houjin-bangou
 language: ja
+themes: [economy]
 
 licenses:
   - JP-PDL-1.0
