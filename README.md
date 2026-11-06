@@ -1,23 +1,16 @@
-## データ出典
+# 法人番号
 
-[国税庁法人番号公表サイト](https://www.houjin-bangou.nta.go.jp/)が公表している全国の法人番号（全件データ）です。約500万の現存法人について、商号・所在地・法人種別・法人番号指定年月日などを収録しています。
+[国税庁法人番号公表サイト](https://www.houjin-bangou.nta.go.jp/)が公表している全国の法人番号を、SQL で検索・集計できるテーブルにしたデータセットです。現存する約 500 万法人の商号・所在地・法人種別・法人番号指定年月日を収録しています。法人番号で gbizinfo・edinet・p_portal などと、`lg_code` で市区町村の統計と結合できます。
 
-全件データは Web-API では取得できないため、公表サイトのダウンロードページから全国版 zip（`00_zenkoku_all_YYYYMMDD.csv` の Unicode 版・約250MB）を取得して取り込んでいます。
+## 出典と利用条件
 
-## 更新方式
+- 国税庁法人番号公表サイトの全件データ（全国版）を加工して作成しています。日次の差分データも取り込んでいます
+- [公共データ利用規約（第1.0版）](https://www.houjin-bangou.nta.go.jp/riyokiyaku/)に従います（CC BY 4.0 互換）。出典の明記が必要です
+- 国税庁が公表したデータを Queria が加工したもので、最新性・正確性・完全性等が保証されたものではありません
 
-raw は法人番号をキーにした incremental モデルで、2系統で更新します。
+## テーブル
 
-- フル（月次・初回・コード push）: 全件 zip を取得して raw を作り直す（`--full-refresh`）。前月末日時点のスナップショット。
-- 差分（日次）: 公表サイトの日次差分 `diff_YYYYMMDD.zip`（同一30列スキーマ、約40日分保持）のうち未取込分のみ取得し、法人番号ごとに最新履歴=1 を1件へ集約して delete+insert で upsert する。
-
-差分の「法人番号ごとの最新履歴=1」は次回全件版に載る行と一致するため、差分適用後の raw は全件スナップショットと等価になる。登記閉鎖・検索対象除外への遷移もその法人の最新レコードに反映されるので、mart の現存フィルタが全件と同じ結果を返す（特別な削除処理は不要）。
-
-モードは環境変数 `HOUJIN_MODE`（`full` / `incremental`、既定 `full`）で切り替える。`incremental` でも raw が無ければ `full` にフォールバックする。差分は約40日しか保持されないため、ベースの再同期として月次フルが必須。
-
-## テーブル: mart_houjin_bangou
-
-現存法人の最新情報のみ（最新履歴・検索対象除外でない・登記閉鎖でない）に絞った法人マスタです。
+`main.mart_houjin_bangou` は 1 行が 1 法人です。最新の履歴で、検索対象除外でも登記閉鎖でもない法人だけに絞っています。
 
 - corporate_number: 法人番号（13桁）
 - seq: 一連番号（ファイル内の連番）
@@ -27,32 +20,27 @@ raw は法人番号をキーにした incremental モデルで、2系統で更�
 - kind: 法人種別（301=株式会社、302=有限会社、305=合同会社 ほか）
 - prefecture_name / city_name / street_number: 都道府県名 / 市区町村名 / 丁目番地等
 - prefecture_code / city_code: 都道府県コード（2桁）/ 市区町村コード（3桁）
-- lg_code: 全国地方公共団体コード（6桁、チェックディジット付き）。dataset-lg-code / dataset-zipcode と結合可能
+- lg_code: 全国地方公共団体コード（6桁、チェックディジット付き）。lg_code・zipcode と結合できます
 - post_code: 郵便番号（7桁）
 - address_outside / address_outside_en: 国外所在地（漢字 / 英語）
 - prefecture_en / city_street_en: 国内所在地の英語表記
 - furigana: フリガナ
 - change_cause: 変更事由の詳細
 
-## 開発
+## 使い方
 
-`.env`（direnv が `.envrc` の `dotenv` で読み込む）に Neon / R2 の認証情報を設定する。必要な環境変数:
+日野市に本店がある法人を、法人種別ごとに数える:
 
-- NEON_DATABASE_URL
-- QUERIA_S3_ENDPOINT
-- QUERIA_S3_ACCESS_KEY_ID
-- QUERIA_S3_SECRET_ACCESS_KEY
-- CF_ACCOUNT_ID
-- QUERIA_S3_BUCKET（default ターゲット時）/ QUERIA_DEV_S3_BUCKET（local、既定 queria-dev）
-
-```bash
-uv sync
-HOUJIN_MODE=full        uv run python main.py local   # 全件フルで dev へビルド
-HOUJIN_MODE=incremental uv run python main.py local   # 日次差分の未取込分を dev へ適用
+```sql
+SELECT kind, count(*) AS corporations
+FROM houjin_bangou.main.mart_houjin_bangou
+WHERE lg_code = '132128'
+GROUP BY ALL
+ORDER BY corporations DESC;
 ```
 
-## ライセンス
+## 注意
 
-[公共データ利用規約（第1.0版）](https://www.houjin-bangou.nta.go.jp/riyokiyaku/)に準拠（CC BY 4.0 互換、出典明記が必要）。
-
-出典：国税庁法人番号公表サイト（国税庁）
+- 所在地は登記上の本店または主たる事務所の所在地です。支店や事業所は含みません
+- 法人種別（`kind`）は 301=株式会社、302=有限会社、305=合同会社、101=国の機関、201=地方公共団体などのコードです
+- 国外に所在地がある法人は `address_outside` に所在地が入ります
