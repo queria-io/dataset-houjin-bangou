@@ -1,7 +1,10 @@
 schema: main
 name: mart_houjin_bangou
 title: 国税庁法人番号
-description: 国税庁が公表する全国の法人番号（現存法人の最新情報のみ）。検索対象除外・登記閉鎖済みを除いた約500万法人を収録
+description: |-
+  国税庁が公表する法人番号のうち、現存する法人の最新の情報です。1 行が 1 法人で、商号・所在地・法人種別・法人番号指定年月日を持ちます。
+
+  - 検索対象除外の法人と登記閉鎖済みの法人は含みません
 published: true
 sources:
   - path: https://www.houjin-bangou.nta.go.jp/
@@ -43,7 +46,7 @@ fields:
     description: 3桁（JIS X0402 の市区町村部分）
   - name: lg_code
     title: 全国地方公共団体コード
-    description: 6桁（JIS X0402、チェックディジット付き）。dataset-lg-code / dataset-zipcode と結合できる
+    description: 全国地方公共団体コード（6 桁、チェックディジット付き）
     semantic: { role: entity, name: city }
   - name: post_code
     title: 郵便番号
