@@ -1,0 +1,4 @@
+schema: main
+name: raw_houjin_bangou_records
+description: 取り込んだ全件データと日次差分の行を、重複を除いてすべて溜めたもの。法人番号の変更履歴の元
+published: false

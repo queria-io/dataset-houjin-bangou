@@ -66,3 +66,9 @@ models:
         description: 検索対象除外（0=対象、1=除外）
       - name: _source_date
         description: 取り込み元ファイルの日付（全件は前月末日、差分は diff_YYYYMMDD の日付）。差分の未取込分の判定に使う
+
+  - name: raw_houjin_bangou_records
+    description: 取り込んだ全件データと日次差分の行を、重複を除いてすべて溜めたもの。法人番号の変更履歴の元。全件の取り込みでも作り直さない（full_refresh=false）
+    columns:
+      - name: _record_hash
+        description: seq と _source_date を除いた全列のハッシュ。同じ行を二重に取り込まないための判定に使う
