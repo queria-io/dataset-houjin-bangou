@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: mart_houjin_bangou_history
+    description: 法人番号ごとの変更履歴。1 行が 1 回の変更の後の状態で、閉鎖した法人も含む
+    columns:
+      - name: corporate_number
+      - name: history_seq
+      - name: is_latest
+      - name: process
+      - name: correct
+      - name: change_date
+      - name: next_change_date
+      - name: update_date
+      - name: name
+      - name: previous_name
+      - name: kind
+      - name: prefecture_name
+      - name: city_name
+      - name: street_number
+      - name: prefecture_code
+      - name: city_code
+      - name: lg_code
+      - name: post_code
+      - name: address_outside
+      - name: close_date
+      - name: close_cause
+      - name: successor_corporate_number
+      - name: change_cause
+      - name: assignment_date
+      - name: name_en
+      - name: furigana

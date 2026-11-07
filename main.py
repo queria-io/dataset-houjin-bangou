@@ -214,6 +214,8 @@ def _ducklake_connect(*, read_only: bool = False) -> Generator[duckdb.DuckDBPyCo
 def _max_source_date() -> date | None:
     """既存 raw_houjin_bangou の最大 _source_date を返す (無ければ None)。
 
+    変更履歴を溜める raw_houjin_bangou_records が無いときも None を返す。
+
     queria pull 済みのローカルカタログ(=公開済みデータ)に対する読み取り専用の
     差分判定。raw が未作成 (初回ビルド等) なら None を返し full にフォールバック
     させる。
@@ -223,9 +225,16 @@ def _max_source_date() -> date | None:
             row = conn.execute(
                 "SELECT max(_source_date) FROM houjin_bangou.main.raw_houjin_bangou"
             ).fetchone()
+            # 変更履歴は全件データを最初の行にするので、溜める表が無ければ全件から始める
+            conn.execute(
+                "SELECT 1 FROM houjin_bangou.main.raw_houjin_bangou_records LIMIT 1"
+            )
             return row[0] if row and row[0] else None
     except duckdb.Error as e:
-        logger.info("raw_houjin_bangou 未作成とみなす (%s)", e.__class__.__name__)
+        logger.info(
+            "raw_houjin_bangou か raw_houjin_bangou_records が未作成とみなす (%s)",
+            e.__class__.__name__,
+        )
         return None
 
 
