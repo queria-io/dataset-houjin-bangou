@@ -11,46 +11,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  sync-daily:
-    runs-on: ubuntu-latest
+  # 差分(diff_YYYYMMDD)の未取込分のみ取り込み公開まで実行する
+  sync:
     # Queria への書き込みは GitHub Actions の OIDC で 1 時間のトークンを取って行う
-    # (shared/scripts/build-fdl.sh)。Queria にこのワークフローの登録が要る
     permissions:
       contents: read
       id-token: write
-    # 共通の Sync の job と同じ group。走っている側は止めない。push の途中で切ると、
-    # 公開されたバージョンとデータファイルの対応が途中の状態で残る
-    concurrency:
-      group: queria-catalog-write
-      cancel-in-progress: false
-      queue: max
-    env:
-      PYTHONUNBUFFERED: "1"
-      HOUJIN_MODE: incremental
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          submodules: true
-
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-      - run: uv python install 3.13
-
-      # fdl はベータ開発中のため、常に最新版を使用する
-      - run: uv lock --upgrade-package fdl-cli && uv sync
-
-      # 差分(diff_YYYYMMDD)の未取込分のみ取り込み公開まで実行する。
-      - name: Apply daily diffs
-        run: scripts/build.sh
-
-  notify-failure:
-    runs-on: ubuntu-latest
-    needs: sync-daily
-    if: failure()
-    steps:
-      - name: Notify Discord on failure
-        run: |
-          curl -s -H "Content-Type: application/json" \
-            -d "{\"embeds\": [{\"title\": \"Sync (daily diff) Failed\", \"url\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\", \"color\": 15158332, \"fields\": [{\"name\": \"Repository\", \"value\": \"${{ github.repository }}\"}, {\"name\": \"Run\", \"value\": \"${{ github.run_id }}\"}]}]}" \
-            "${{ secrets.DISCORD_WEBHOOK_URL }}"
+    uses: queria-io/dataset-shared/.github/workflows/sync.yml@dc0e5caa95da02a5303726dca8df5dec26c94322
+    with:
+      mode: incremental
+    secrets:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

@@ -9,7 +9,7 @@
 いずれも Web-API ではなく公表サイトのダウンロードページに POST して取得する
 (アプリID 不要)。差分は約40日しか保持されないため、全件をベースに差分を重ねる。
 
-モードは環境変数 HOUJIN_MODE (full / incremental, 既定 full) で指定する。
+モードは環境変数 SYNC_MODE (full / incremental, 既定 full) で指定する。
 incremental でも raw が存在しなければ full にフォールバックする (初回ビルド対策)。
 
 fdl checkout の作業場の DuckLake カタログ (FDL_WORKING) に対して dbt build を実行する。
@@ -223,7 +223,7 @@ def _max_source_date() -> date | None:
 
 def main() -> None:
     target = os.environ.get("DBT_TARGET", sys.argv[1] if len(sys.argv) > 1 else "default")
-    mode = os.environ.get("HOUJIN_MODE", "full").lower()
+    mode = (os.environ.get("SYNC_MODE") or "full").lower()
 
     after = _max_source_date() if mode == "incremental" else None
     if mode == "incremental" and after is None:
