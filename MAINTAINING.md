@@ -20,7 +20,7 @@ raw は法人番号をキーにした incremental モデルで、2系統で更�
 - 最初の行は取り込みを始めたときの全件。それより前の変更は、公表サイトの差分（約40日分）にも全件にも残っていないので持てない。持つには Web-API（アプリケーション ID が必要）の期間指定（2015-12-01 以降）か、法人番号指定の履歴取得で埋める
 - `raw_houjin_bangou_records` を作り直すと履歴が消える。消してしまったときは全件から始め直すことになる
 
-モードは環境変数 `HOUJIN_MODE`（`full` / `incremental`、既定 `full`）で切り替える。`incremental` でも raw が無ければ `full` にフォールバックする。差分は約40日しか保持されないため、ベースの再同期として月次フルが必須。
+モードは環境変数 `SYNC_MODE`（`full` / `incremental`、既定 `full`）で切り替える。`incremental` でも raw が無ければ `full` にフォールバックする。差分は約40日しか保持されないため、ベースの再同期として月次フルが必須。
 
 ## 開発
 
@@ -29,6 +29,6 @@ raw は法人番号をキーにした incremental モデルで、2系統で更�
 ```bash
 git submodule update --init
 uv sync
-HOUJIN_MODE=full        FDL_TOKEN=... scripts/build.sh   # 全件フル
-HOUJIN_MODE=incremental FDL_TOKEN=... scripts/build.sh   # 日次差分の未取込分
+SYNC_MODE=full        FDL_TOKEN=... scripts/build.sh   # 全件フル
+SYNC_MODE=incremental FDL_TOKEN=... scripts/build.sh   # 日次差分の未取込分
 ```
