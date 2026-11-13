@@ -6,14 +6,13 @@ description: |-
 
   - 取り込みを始めた時点の全件データの状態を各法人の最初の行とし、それ以降の変更を日次の差分データから追加しています。それより前の変更は、差分データに過去の履歴が含まれていた法人だけが持ちます
   - 検索対象除外の法人は含みません
-published: true
 sources:
   - path: https://www.houjin-bangou.nta.go.jp/
 fields:
   - name: corporate_number
     title: 法人番号
     description: 13桁
-    semantic: { role: entity, name: corporate_number }
+    annotations: { queria: { semantic: { role: entity, name: corporate_number } } }
   - name: history_seq
     title: 履歴の順番
     description: 法人番号ごとに変更年月日の古い順に 1 から振った番号
@@ -50,18 +49,18 @@ fields:
   - name: prefecture_code
     title: 都道府県コード
     description: 2桁（JIS X0401）
-    semantic: { role: entity, name: prefecture }
+    annotations: { queria: { semantic: { role: entity, name: prefecture } } }
   - name: city_code
     title: 市区町村コード
     description: 3桁（JIS X0402 の市区町村部分）
   - name: lg_code
     title: 全国地方公共団体コード
     description: 全国地方公共団体コード（6 桁、チェックディジット付き）
-    semantic: { role: entity, name: city }
+    annotations: { queria: { semantic: { role: entity, name: city } } }
   - name: post_code
     title: 郵便番号
     description: 7桁
-    semantic: { role: entity, name: postal_code }
+    annotations: { queria: { semantic: { role: entity, name: postal_code } } }
   - name: address_outside
     title: 国外所在地
   - name: close_date

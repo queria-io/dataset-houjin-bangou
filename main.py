@@ -12,9 +12,9 @@
 モードは環境変数 HOUJIN_MODE (full / incremental, 既定 full) で指定する。
 incremental でも raw が存在しなければ full にフォールバックする (初回ビルド対策)。
 
-queria の DuckLake カタログ(QUERIA_* 環境変数で注入)に対して dbt build を実行する。
-R2 への公開は queria sync の push が担う。incremental は公開済み raw との
-差分判定を行うため、ビルド前に queria pull でカタログを取り込んでおく必要がある (queria sync が行う)。
+fdl checkout の作業場の DuckLake カタログ (FDL_WORKING) に対して dbt build を実行する。
+公開は fdl commit / fdl push が担う (scripts/build.sh)。incremental は公開済み raw との
+差分判定を行うため、公開中のバージョンから始める (build-fdl.sh が fdl checkout する)。
 """
 
 from __future__ import annotations
@@ -157,19 +157,18 @@ def download_diffs(client: httpx.Client, dest_dir: Path, after: date | None) -> 
 
 @contextmanager
 def _ducklake_connect(*, read_only: bool = False) -> Generator[duckdb.DuckDBPyConnection]:
-    """Open a fresh DuckDB session with the queria-managed DuckLake attached.
+    """fdl checkout の作業場の DuckLake をアタッチした新規 DuckDB セッションを開く。
 
-    Uses the ``QUERIA_*`` environment variables injected by ``queria run``: the local
-    SQLite live catalog (``QUERIA_CATALOG_PATH``) and the data location
-    (``QUERIA_DATA_URL``, R2 for S3 targets).
+    shared/scripts/build-fdl.sh が渡す環境変数 (作業場のカタログ ``FDL_WORKING`` と
+    新しいデータファイルの置き場 ``FDL_DATA_PATH``) を使う。置き場が公開ストレージの
+    ``data/`` のときは、build-fdl.sh が鍵を取り直す DuckDB の永続 secret を作っているので、
+    この接続でも期限が切れるたびに取り直される。
     """
-    catalog_path = os.environ["QUERIA_CATALOG_PATH"]
-    data_url = os.environ["QUERIA_DATA_URL"]
-    # ビルドが公開ストレージを読むときの名乗り。queria run が queria-build として
+    catalog_path = os.environ["FDL_WORKING"]
+    data_url = os.environ["FDL_DATA_PATH"]
+    # ビルドが公開ストレージを読むときの名乗り。build-fdl.sh が queria-build として
     # 渡す。profiles.yml の config_options と同じ値を、こちらのセッションにも通す。
-    # 取り込みの一部は dbt ではなくこの接続で行うので、ここが抜けるとその読み取りが
-    # 匿名のまま出ていき、data.queria.io の利用統計に自分のビルドが利用者として
-    # 混ざる。接続を開くときにしか決められないので config= で渡す
+    # 接続を開くときにしか決められないので config= で渡す
     conn = duckdb.connect(
         ":memory:",
         config={"custom_user_agent": os.environ.get("QUERIA_USER_AGENT", "")},
@@ -177,25 +176,9 @@ def _ducklake_connect(*, read_only: bool = False) -> Generator[duckdb.DuckDBPyCo
     try:
         conn.execute("INSTALL ducklake; LOAD ducklake;")
         conn.execute("INSTALL sqlite; LOAD sqlite;")
-        if data_url.startswith("s3://"):
-            conn.execute("INSTALL httpfs; LOAD httpfs;")
-            # credential_chain はこの拡張にある
-            conn.execute("INSTALL aws; LOAD aws;")
-            # 認証情報を値として持たず、期限が切れたら取り直させる。一時認証情報は
-            # 15 分で切れるのに対しこのビルドはそれより長く走るので、値を渡す形だと
-            # 途中で書けなくなる。process が実行するのは queria で、鍵はどこにも置かない
-            use_ssl = (
-                "false" if os.environ.get("QUERIA_S3_USE_SSL") == "false" else "true"
-            )
-            conn.execute(
-                "CREATE SECRET (TYPE s3, PROVIDER credential_chain, "
-                "CHAIN 'process', REFRESH auto, ENDPOINT ?, URL_STYLE 'path', "
-                f"REGION ?, USE_SSL {use_ssl})",
-                [
-                    os.environ["QUERIA_S3_ENDPOINT_HOST"],
-                    os.environ.get("QUERIA_S3_REGION", "auto"),
-                ],
-            )
+        conn.execute("INSTALL httpfs; LOAD httpfs;")
+        # 永続 secret の credential_chain はこの拡張にある
+        conn.execute("INSTALL aws; LOAD aws;")
         opts = (
             f"DATA_PATH '{data_url}', OVERRIDE_DATA_PATH true, "
             f"DATA_INLINING_ROW_LIMIT 0, META_TYPE 'sqlite', "
@@ -216,7 +199,7 @@ def _max_source_date() -> date | None:
 
     変更履歴を溜める raw_houjin_bangou_records が無いときも None を返す。
 
-    queria pull 済みのローカルカタログ(=公開済みデータ)に対する読み取り専用の
+    fdl checkout した作業場のカタログ(=公開済みデータ)に対する読み取り専用の
     差分判定。raw が未作成 (初回ビルド等) なら None を返し full にフォールバック
     させる。
     """

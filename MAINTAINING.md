@@ -24,18 +24,11 @@ raw は法人番号をキーにした incremental モデルで、2系統で更�
 
 ## 開発
 
-`.env`（direnv が `.envrc` の `dotenv` で読み込む）に Neon / R2 の認証情報を設定する。必要な環境変数:
-
-- NEON_DATABASE_URL
-- QUERIA_S3_ENDPOINT
-- QUERIA_S3_ACCESS_KEY_ID
-- QUERIA_S3_SECRET_ACCESS_KEY
-- CF_ACCOUNT_ID
-- QUERIA_S3_BUCKET（default ターゲット時）/ QUERIA_DEV_S3_BUCKET（local、既定 queria-dev）
+`scripts/build.sh` は公開中のバージョンを `fdl checkout` してから取り込み・ビルドし、`fdl commit` と `fdl push` で公開する（`shared/scripts/build-fdl.sh`）。手元で実行するときは、queria.io で発行したトークンを `FDL_TOKEN` に渡す。GitHub Actions では OIDC で取得する。
 
 ```bash
+git submodule update --init
 uv sync
-HOUJIN_MODE=full        uv run python main.py local   # 全件フルで dev へビルド
-HOUJIN_MODE=incremental uv run python main.py local   # 日次差分の未取込分を dev へ適用
+HOUJIN_MODE=full        FDL_TOKEN=... scripts/build.sh   # 全件フル
+HOUJIN_MODE=incremental FDL_TOKEN=... scripts/build.sh   # 日次差分の未取込分
 ```
-

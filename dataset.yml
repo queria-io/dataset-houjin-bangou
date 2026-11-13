@@ -1,4 +1,6 @@
-spec_version: "0.1"
+# この dataset.yml は fdl commit が読む（FDL の dataset.json を YAML で書いたもの）。
+# 表の説明は models/ の *.table.yml に書く。表と列の型・NULL・行数は fdl commit がカタログから埋める。
+# Queria だけの項目（テーマ・カバー・AI 向けの説明・列の意味）は annotations.queria に書く。
 name: houjin_bangou
 title: 国税庁法人番号
 description: |-
@@ -11,7 +13,6 @@ keywords:
   - 国税庁
 homepage: https://github.com/queria-io/dataset-houjin-bangou
 language: ja
-themes: [economy]
 
 licenses:
   - JP-PDL-1.0
@@ -27,30 +28,32 @@ contributors:
 
 spatial_coverage: [JP]
 update_frequency: monthly
-cover: 🏢
-
-ai_context:
-  instructions: |
-    法人番号から法人名・所在地を引く、他のデータセットを法人番号で名寄せする、
-    地域別・法人種別別に法人数を数える、といった用途に使う。
-    mart_houjin_bangou は現存法人の最新情報のみ（約500万件）。最新履歴・検索対象除外でない・
-    登記閉鎖でないものに絞ってあるので、閉鎖された法人や過去の商号は入っていない。
-    閉鎖された法人・旧商号・所在地の変更は mart_houjin_bangou_history（1 行が 1 回の変更）で引く。
-    旧商号で法人番号を探すときは history の name を検索し、is_latest の行か mart_houjin_bangou で今の商号を見る。
-    履歴は取り込みを始めた時点から後の変更が中心で、それより前の商号は一部の法人しか持たない。
-    法人番号は13桁で、gbizinfo・edinet・p_portal と結合できる。
-    ただし個人事業主は法人番号を持たないので、事業者全体をカバーするものではない。
-    国内所在地は都道府県名・市区町村名・丁目番地等に分かれ、lg_code（6桁）も持つので
-    lg_code / zipcode / address_br と結合できる。国外所在地は別の列に入る。
-    kind は法人種別コード（301=株式会社、302=有限会社、305=合同会社 など）。
-    商号は登記上の表記なので、「株式会社」の前後や旧字体の揺れがある。名寄せには注意が要る。
-  synonyms: [法人番号, 企業マスタ, 商業登記, 国税庁]
-  examples:
-    - 法人番号から会社名と所在地を引きたい
-    - 旧商号や閉鎖した会社から法人番号を引きたい
-    - 都道府県別の株式会社の数を出したい
-    - 市区町村ごとの法人数を人口と並べたい
 
 schemas:
   - name: main
     title: 法人情報マスタ
+annotations:
+  queria:
+    themes: [economy]
+    cover: 🏢
+    ai_context:
+      instructions: |
+        法人番号から法人名・所在地を引く、他のデータセットを法人番号で名寄せする、
+        地域別・法人種別別に法人数を数える、といった用途に使う。
+        mart_houjin_bangou は現存法人の最新情報のみ（約500万件）。最新履歴・検索対象除外でない・
+        登記閉鎖でないものに絞ってあるので、閉鎖された法人や過去の商号は入っていない。
+        閉鎖された法人・旧商号・所在地の変更は mart_houjin_bangou_history（1 行が 1 回の変更）で引く。
+        旧商号で法人番号を探すときは history の name を検索し、is_latest の行か mart_houjin_bangou で今の商号を見る。
+        履歴は取り込みを始めた時点から後の変更が中心で、それより前の商号は一部の法人しか持たない。
+        法人番号は13桁で、gbizinfo・edinet・p_portal と結合できる。
+        ただし個人事業主は法人番号を持たないので、事業者全体をカバーするものではない。
+        国内所在地は都道府県名・市区町村名・丁目番地等に分かれ、lg_code（6桁）も持つので
+        lg_code / zipcode / address_br と結合できる。国外所在地は別の列に入る。
+        kind は法人種別コード（301=株式会社、302=有限会社、305=合同会社 など）。
+        商号は登記上の表記なので、「株式会社」の前後や旧字体の揺れがある。名寄せには注意が要る。
+      synonyms: [法人番号, 企業マスタ, 商業登記, 国税庁]
+      examples:
+        - 法人番号から会社名と所在地を引きたい
+        - 旧商号や閉鎖した会社から法人番号を引きたい
+        - 都道府県別の株式会社の数を出したい
+        - 市区町村ごとの法人数を人口と並べたい
