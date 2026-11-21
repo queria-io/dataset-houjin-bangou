@@ -1,16 +1,19 @@
 """国税庁 法人番号 データの取得 + dbt build パイプライン。
 
 取得方式は2系統:
-  full        前月末日時点の全件 zip (00_zenkoku_all_YYYYMMDD.zip, 約250MB) を取得し
-              raw を作り直す (--full-refresh)。月次・初回・コード push 時。
-  incremental 日次の差分 zip (diff_YYYYMMDD.zip) のうち未取込分のみ取得し、法人番号キーで
-              raw に upsert する。raw の max(_source_date) より新しい日付の差分だけ落とす。
-
-いずれも Web-API ではなく公表サイトのダウンロードページに POST して取得する
-(アプリID 不要)。差分は約40日しか保持されないため、全件をベースに差分を重ねる。
+  full        前月末日時点の全件 zip (00_zenkoku_all_YYYYMMDD.zip, 約250MB) を公表サイトの
+              ダウンロードページから取得し、raw を作り直す (--full-refresh)。月次・初回・コード push 時。
+              全件は Web-API では取れない。
+  incremental Web-API (webapi.py) の期間指定で、raw の max(_source_date) の翌日から前日までを
+              1 日ずつ取得し、法人番号キーで raw に upsert する。あわせて変更履歴の過去分を
+              少しずつ取り込む (raw_houjin_bangou_records にだけ足す):
+                - 期間指定で 2015-12-01 から BACKFILL_END まで、1 回 HOUJIN_BACKFILL_DAYS 日ずつ
+                - 商号変更の行があるのに最初の行 (処理区分 01) を持たない法人の変更履歴を、
+                  法人番号指定 (history=1) で 1 回 HOUJIN_HISTORY_REQUESTS リクエストずつ
 
 モードは環境変数 SYNC_MODE (full / incremental, 既定 full) で指定する。
 incremental でも raw が存在しなければ full にフォールバックする (初回ビルド対策)。
+incremental は Web-API のアプリケーション ID (HOUJIN_BANGOU_APP_ID) が要る。
 
 fdl checkout の作業場の DuckLake カタログ (FDL_WORKING) に対して dbt build を実行する。
 公開は fdl commit / fdl push が担う (scripts/build.sh)。incremental は公開済み raw との
@@ -27,19 +30,20 @@ import sys
 import tempfile
 from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import duckdb
 import httpx
 from dbt.cli.main import dbtRunner
 
+import webapi
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
 ZENKEN_URL = "https://www.houjin-bangou.nta.go.jp/download/zenken/index.html"
-SABUN_URL = "https://www.houjin-bangou.nta.go.jp/download/sabun/"
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -52,8 +56,11 @@ TOKEN_RE = re.compile(re.escape(TOKEN_FIELD) + r'"\s+value="([^"]+)"')
 # 「CSV形式・Unicode」セクション (全件・差分とも同じ構造)
 CSV_UNICODE_RE = re.compile(r'id="csv-unicode".*?id="xml-unicode"', re.DOTALL)
 DO_DOWNLOAD_RE = re.compile(r"doDownload\((\d+)\)")
-# 差分行: 令和N年M月D日 ... doDownload(番号)
-DIFF_ROW_RE = re.compile(r"令和(\d+)年(\d+)月(\d+)日.*?doDownload\((\d+)\)", re.DOTALL)
+JST = timezone(timedelta(hours=9))
+# 変更履歴を全件で始めた日 (raw_houjin_bangou_records の最初の全件 00_zenkoku_all_20261030)。
+# 過去分の期間指定はこの日までを取る
+BACKFILL_END = date(2026, 10, 30)
+
 
 
 def _client() -> httpx.Client:
@@ -112,47 +119,6 @@ def download_full(client: httpx.Client, dest_dir: Path) -> str:
     zip_path = _post_download(client, ZENKEN_URL, token, file_no, dest_dir)
     logger.info("全件DL完了: %s (%d bytes)", zip_path.name, zip_path.stat().st_size)
     return _zip_csv_url(zip_path)
-
-
-def list_diff_files(html: str) -> list[tuple[date, str]]:
-    """差分ページの「CSV形式・Unicode」から (日付, ファイル番号) を新しい順で返す。"""
-    section = CSV_UNICODE_RE.search(html).group(0)
-    pairs: list[tuple[date, str]] = []
-    for m in DIFF_ROW_RE.finditer(section):
-        y = 2018 + int(m.group(1))  # 令和N年 → 西暦
-        d = date(y, int(m.group(2)), int(m.group(3)))
-        pairs.append((d, m.group(4)))
-    return pairs
-
-
-def download_diffs(client: httpx.Client, dest_dir: Path, after: date | None) -> list[str]:
-    """after より新しい日付の差分 zip を取得し zip:// CSV URL のリストを返す。"""
-    page = client.get(SABUN_URL)
-    page.raise_for_status()
-    html = page.text
-    token = TOKEN_RE.search(html).group(1)
-
-    pairs = list_diff_files(html)
-    if not pairs:
-        raise RuntimeError("差分ファイルを1件も抽出できませんでした")
-    oldest = min(d for d, _ in pairs)
-    if after is not None and after < oldest:
-        logger.warning(
-            "未取込日 %s が差分の保持範囲(最古 %s)より古い。全件フルリフレッシュが必要",
-            after,
-            oldest,
-        )
-
-    targets = [(d, no) for d, no in pairs if after is None or d > after]
-    targets.sort()  # 古い順に取り込む
-    logger.info("差分対象: %d 日分 (after=%s)", len(targets), after)
-
-    urls: list[str] = []
-    for d, no in targets:
-        zip_path = _post_download(client, SABUN_URL, token, no, dest_dir)
-        logger.info("差分DL %s: %s (%d bytes)", d, zip_path.name, zip_path.stat().st_size)
-        urls.append(_zip_csv_url(zip_path))
-    return urls
 
 
 @contextmanager
@@ -221,6 +187,81 @@ def _max_source_date() -> date | None:
         return None
 
 
+def _backfill_after() -> date | None:
+    """過去分の期間指定をどの日まで取り込んだか (まだなら None)。"""
+    with _ducklake_connect(read_only=True) as conn:
+        row = conn.execute(
+            "SELECT max(_source_date) FROM houjin_bangou.main.raw_houjin_bangou_records "
+            "WHERE _source_date < ?",
+            [BACKFILL_END],
+        ).fetchone()
+    return row[0] if row else None
+
+
+def _history_targets(limit: int) -> list[str]:
+    """商号変更か吸収合併の行があるのに、最初の行 (処理区分 01) を持たない法人。
+
+    変更前の商号は、その法人の前の行からしか分からない。2015-12-01 より前に指定された
+    法人は期間指定で最初の行を取れないので、法人番号指定で変更履歴をまとめて取る。
+    """
+    with _ducklake_connect(read_only=True) as conn:
+        rows = conn.execute(
+            "SELECT corporate_number FROM houjin_bangou.main.raw_houjin_bangou_records "
+            "GROUP BY ALL "
+            "HAVING bool_or(process IN ('11', '71')) AND NOT bool_or(process = '01') "
+            "ORDER BY 1 LIMIT ?",
+            [limit],
+        ).fetchall()
+    return [r[0] for r in rows]
+
+
+def fetch_daily(client: httpx.Client, app_id: str, dest: Path, after: date) -> list[str]:
+    """after の翌日から前日 (JST) までの差分を 1 日ずつ取る。当日分は更新中のことがあるので取らない。"""
+    yesterday = datetime.now(JST).date() - timedelta(1)
+    targets = webapi.days(after + timedelta(1), yesterday)
+    logger.info("差分対象: %d 日分 (after=%s)", len(targets), after)
+    written = [
+        webapi.write_csv(dest, f"diff_{d:%Y%m%d}.csv", webapi.fetch_diff(client, app_id, d))
+        for d in targets
+    ]
+    return [str(p) for p in written if p]
+
+
+def fetch_backfill(client: httpx.Client, app_id: str, dest: Path, n_days: int) -> list[str]:
+    """過去分の期間指定を、続きから n_days 日ぶん取る。"""
+    done = _backfill_after()
+    start = done + timedelta(1) if done else webapi.DIFF_START
+    targets = webapi.days(start, min(start + timedelta(n_days - 1), BACKFILL_END))
+    logger.info("過去分の期間指定: %d 日分 (%s から)", len(targets), start)
+    written = [
+        webapi.write_csv(dest, f"diff_{d:%Y%m%d}.csv", webapi.fetch_diff(client, app_id, d))
+        for d in targets
+    ]
+    return [str(p) for p in written if p]
+
+
+def fetch_histories(client: httpx.Client, app_id: str, dest: Path, n_requests: int) -> list[str]:
+    """最初の行を持たない法人の変更履歴を、n_requests リクエストぶん取る。"""
+    numbers = _history_targets(n_requests * webapi.NUM_BATCH)
+    logger.info("法人番号指定の変更履歴: %d 法人", len(numbers))
+    today = datetime.now(JST).date()
+    written = [
+        webapi.write_csv(
+            dest, f"num_{today:%Y%m%d}_{i:05d}.csv", webapi.fetch_history(client, app_id, batch)
+        )
+        for i, batch in enumerate(webapi.chunks(numbers, webapi.NUM_BATCH))
+    ]
+    return [str(p) for p in written if p]
+
+
+def _dbt(cmds: list[list[str]]) -> None:
+    dbt = dbtRunner()
+    for cmd in cmds:
+        result = dbt.invoke(cmd)
+        if not result.success:
+            raise SystemExit(f"dbt {' '.join(cmd)} failed")
+
+
 def main() -> None:
     target = os.environ.get("DBT_TARGET", sys.argv[1] if len(sys.argv) > 1 else "default")
     mode = (os.environ.get("SYNC_MODE") or "full").lower()
@@ -232,29 +273,37 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory(prefix="houjin_") as tmp, _client() as client:
         if mode == "incremental":
-            paths = download_diffs(client, Path(tmp), after)
-            if not paths:
-                logger.info("未取込の差分なし。ビルドをスキップ (already up to date)")
-                return
+            app_id = os.environ["HOUJIN_BANGOU_APP_ID"]
+            daily_dir, past_dir = Path(tmp, "daily"), Path(tmp, "past")
+            daily_dir.mkdir()
+            past_dir.mkdir()
+            paths = fetch_daily(client, app_id, daily_dir, after)
+            history_paths = fetch_backfill(
+                client, app_id, past_dir, int(os.environ.get("HOUJIN_BACKFILL_DAYS", "300"))
+            ) + fetch_histories(
+                client, app_id, past_dir, int(os.environ.get("HOUJIN_HISTORY_REQUESTS", "1500"))
+            )
             full_refresh = False
         else:
             paths = [download_full(client, Path(tmp))]
+            history_paths = []
             full_refresh = True
 
-        var_arg = f"{{houjin_csv_paths: {json.dumps(paths)}}}"
+        if not paths and not history_paths:
+            logger.info("未取込の差分なし。ビルドをスキップ (already up to date)")
+            return
+
+        var_arg = json.dumps(
+            {"houjin_csv_paths": paths, "houjin_history_csv_paths": history_paths}
+        )
         build_cmd = ["build", "--target", target, "--vars", var_arg]
         if full_refresh:
             build_cmd.append("--full-refresh")
+        # 過去分だけのときは、最新の行の raw_houjin_bangou を触らない
+        if not paths:
+            build_cmd += ["--select", "raw_houjin_bangou_records+"]
 
-        dbt = dbtRunner()
-        for cmd in (
-            ["deps"],
-            build_cmd,
-            ["docs", "generate", "--target", target, "--vars", var_arg],
-        ):
-            result = dbt.invoke(cmd)
-            if not result.success:
-                raise SystemExit(f"dbt {' '.join(cmd)} failed")
+        _dbt([["deps"], build_cmd, ["docs", "generate", "--target", target, "--vars", var_arg]])
 
 
 if __name__ == "__main__":
