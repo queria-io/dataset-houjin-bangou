@@ -11,7 +11,9 @@
    過去の商号・所在地は残らない。こちらは full_refresh=false で全件の取り込みでも作り直さず、
    まだ持っていない行だけを足す。
    同じ行は seq と _source_date を除いた全列で判定する (_record_hash)。月次の全件に載る行の
-   ほとんどは日次の差分で取り込み済みなので、足されるのは差分で取りこぼした行だけになる。 #}
+   ほとんどは日次の差分で取り込み済みなので、足されるのは差分で取りこぼした行だけになる。
+   houjin_history_csv_paths は過去分 (Web-API の期間指定と法人番号指定の変更履歴) で、
+   raw_houjin_bangou には入れずこの表にだけ足す。 #}
 
 {%- set record_columns = [
     'corporate_number', 'process', 'correct', 'update_date', 'change_date', 'name',
@@ -23,7 +25,7 @@
 ] %}
 
 with src as (
-    {{ read_houjin_csv(var('houjin_csv_paths', [])) }}
+    {{ read_houjin_csv(var('houjin_csv_paths', []) + var('houjin_history_csv_paths', [])) }}
 ),
 
 hashed as (

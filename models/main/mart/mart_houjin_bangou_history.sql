@@ -1,36 +1,10 @@
 {{ config(materialized='table') }}
 
 {# 法人番号ごとの変更履歴。1 行が 1 回の変更（新規・商号変更・所在地変更・閉鎖など）の後の状態。
-   取り込みを始めた時点の全件データが各法人の最初の行になり、それ以降の変更が日次の差分から足される。 #}
+   元は全件データ・日次の差分・Web-API の期間指定（2015-12-01 以降）と法人番号指定の変更履歴。 #}
 
-with records as (
-    select * from {{ ref('raw_houjin_bangou_records') }}
-),
-
--- 訂正などのとき、差分には最新でない行（latest=0）も含めてその法人の履歴がまとめて載る。
--- その日の履歴を正とし、それより前に取り込んだ行は使わない
-resent as (
-    select corporate_number, max(_source_date) as resent_date
-    from records
-    where latest = '0'
-    group by all
-),
-
-kept as (
-    select r.*
-    from records r
-    left join resent s using (corporate_number)
-    where s.resent_date is null or r._source_date >= s.resent_date
-),
-
--- 同じ変更（法人番号・処理区分・変更年月日）が何度か載ったときは、最後に取り込んだ行を使う
-deduped as (
-    select *
-    from kept
-    qualify row_number() over (
-        partition by corporate_number, process, change_date
-        order by _source_date desc, update_date desc
-    ) = 1
+with deduped as (
+    select * from {{ ref('stg_houjin_bangou_records') }}
 ),
 
 ordered as (

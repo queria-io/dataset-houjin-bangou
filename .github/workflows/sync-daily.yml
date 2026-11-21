@@ -17,8 +17,11 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: queria-io/dataset-shared/.github/workflows/sync.yml@dc0e5caa95da02a5303726dca8df5dec26c94322
+    uses: queria-io/dataset-shared/.github/workflows/sync.yml@d7ffbb19349142c59fb85538ecec74ae4bb94da7
     with:
       mode: incremental
+      # 日次差分に加えて、変更履歴の過去分を Web-API で少しずつ取る (1 リクエストごとに 1 秒空ける)
+      timeout_minutes: 120
     secrets:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      HOUJIN_BANGOU_APP_ID: ${{ secrets.HOUJIN_BANGOU_APP_ID }}
