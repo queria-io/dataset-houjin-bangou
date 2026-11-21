@@ -23,5 +23,4 @@ jobs:
     uses: queria-io/dataset-shared/.github/workflows/sync.yml@d7ffbb19349142c59fb85538ecec74ae4bb94da7
     with:
       dataset_name: houjin_bangou
-    secrets:
-      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    secrets: inherit

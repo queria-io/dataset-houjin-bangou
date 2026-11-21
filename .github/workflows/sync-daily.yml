@@ -22,6 +22,4 @@ jobs:
       mode: incremental
       # 日次差分に加えて、変更履歴の過去分を Web-API で少しずつ取る (1 リクエストごとに 1 秒空ける)
       timeout_minutes: 120
-    secrets:
-      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      HOUJIN_BANGOU_APP_ID: ${{ secrets.HOUJIN_BANGOU_APP_ID }}
+    secrets: inherit
