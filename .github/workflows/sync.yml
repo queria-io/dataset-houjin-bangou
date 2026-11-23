@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: queria-io/dataset-shared/.github/workflows/sync.yml@d7ffbb19349142c59fb85538ecec74ae4bb94da7
+    uses: queria-io/dataset-shared/.github/workflows/sync.yml@84cde26eceaa8beb74cce30d82da2dcb44174043
     with:
       dataset_name: houjin_bangou
     secrets: inherit

@@ -1,18 +1,17 @@
-schema: main
-name: mart_houjin_bangou_history
+$schema: https://tabledoc.queria.io/schemas/table/v1.json
 title: 国税庁法人番号の変更履歴
 description: |-
   法人番号ごとの新規・商号変更・所在地変更・登記記録の閉鎖などの履歴です。1 行が 1 回の変更の後の状態で、閉鎖した法人も含みます。旧商号から法人番号を検索できます。
 
   - 2015 年 12 月以降の変更を Web-API の期間指定で、それより前から続く法人の商号変更を法人番号指定の変更履歴で取り込んでいます。過去分は日次の更新で少しずつ追加しています
   - 検索対象除外の法人は含みません
-sources:
-  - path: https://www.houjin-bangou.nta.go.jp/
-fields:
+primary_key: [corporate_number, history_seq]
+sources: [houjin-bangou]
+columns:
   - name: corporate_number
     title: 法人番号
     description: 13桁
-    annotations: { queria: { semantic: { role: entity, name: corporate_number } } }
+    entity: corporate_number
   - name: history_seq
     title: 履歴の順番
     description: 法人番号ごとに変更年月日の古い順に 1 から振った番号
@@ -49,18 +48,18 @@ fields:
   - name: prefecture_code
     title: 都道府県コード
     description: 2桁（JIS X0401）
-    annotations: { queria: { semantic: { role: entity, name: prefecture } } }
+    entity: prefecture
   - name: city_code
     title: 市区町村コード
     description: 3桁（JIS X0402 の市区町村部分）
   - name: lg_code
     title: 全国地方公共団体コード
     description: 全国地方公共団体コード（6 桁、チェックディジット付き）
-    annotations: { queria: { semantic: { role: entity, name: city } } }
+    entity: city
   - name: post_code
     title: 郵便番号
     description: 7桁
-    annotations: { queria: { semantic: { role: entity, name: postal_code } } }
+    entity: postal_code
   - name: address_outside
     title: 国外所在地
   - name: close_date

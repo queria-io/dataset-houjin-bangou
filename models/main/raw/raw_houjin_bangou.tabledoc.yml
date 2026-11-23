@@ -1,7 +1,7 @@
-schema: main
-name: raw_houjin_bangou
+$schema: https://tabledoc.queria.io/schemas/table/v1.json
 description: 国税庁 法人番号 全件データ（00_zenkoku_all_YYYYMMDD.csv）の生データ。全30列、すべて VARCHAR で取り込む
-fields:
+hidden: true
+columns:
   - name: seq
     description: 一連番号（ファイル内の連番。レコードの恒久的識別子ではない）
   - name: corporate_number
@@ -64,6 +64,3 @@ fields:
     description: 検索対象除外（0=対象、1=除外）
   - name: _source_date
     description: 取り込み元ファイルの日付（全件は前月末日、差分は diff_YYYYMMDD の日付）。差分の未取込分の判定に使う
-annotations:
-  queria:
-    published: false

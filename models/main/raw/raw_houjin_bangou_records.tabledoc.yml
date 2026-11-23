@@ -1,6 +1,3 @@
-schema: main
-name: raw_houjin_bangou_records
+$schema: https://tabledoc.queria.io/schemas/table/v1.json
 description: 取り込んだ全件データと日次差分の行を、重複を除いてすべて溜めたもの。法人番号の変更履歴の元
-annotations:
-  queria:
-    published: false
+hidden: true
