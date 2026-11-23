@@ -1,0 +1,39 @@
+$schema: https://tabledoc.queria.io/schemas/dataset/v1.json
+name: houjin_bangou
+title: 国税庁法人番号
+description: |-
+  国税庁が公表する全国の法人番号と、商号・所在地・法人種別・法人番号指定年月日です。現存する約 500 万法人の最新の情報と、閉鎖した法人を含む商号・所在地の変更履歴を収録しています。法人番号で他のデータセットと結合できます。
+
+  出典：国税庁法人番号公表サイト（国税庁）。国税庁法人番号システムの Web-API 機能を利用して取得した情報をもとに作成していますが、内容は国税庁によって保証されたものではありません。公共データ利用規約（第1.0版）に準拠した利用条件のもとで再配布しています。最新性・正確性・完全性等が保証されたものではありません。
+image: cover.png
+topics:
+  - 法人番号
+  - 企業マスタ
+  - 商号
+  - 旧商号
+  - 国税庁
+synonyms: [法人番号, 企業マスタ, 商業登記, 国税庁]
+homepage: https://github.com/queria-io/dataset-houjin-bangou
+language: ja
+licenses:
+  - JP-PDL-1.0
+
+sources:
+  - id: houjin-bangou
+    title: 国税庁法人番号公表サイト
+    url: https://www.houjin-bangou.nta.go.jp/
+  - id: webapi
+    title: 法人番号システム Web-API
+    url: https://www.houjin-bangou.nta.go.jp/webapi/
+
+contributors:
+  - id: nta
+    title: 国税庁
+    url: https://www.nta.go.jp/
+    roles: [rightsHolder]
+
+spatial_coverage: [JP]
+update_frequency: daily
+schemas:
+  - name: main
+    title: 法人情報マスタ

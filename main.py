@@ -279,7 +279,7 @@ def main() -> None:
             past_dir.mkdir()
             paths = fetch_daily(client, app_id, daily_dir, after)
             history_paths = fetch_backfill(
-                client, app_id, past_dir, int(os.environ.get("HOUJIN_BACKFILL_DAYS", "300"))
+                client, app_id, past_dir, int(os.environ.get("HOUJIN_BACKFILL_DAYS", "600"))
             ) + fetch_histories(
                 client, app_id, past_dir, int(os.environ.get("HOUJIN_HISTORY_REQUESTS", "1500"))
             )
