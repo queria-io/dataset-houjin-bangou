@@ -31,7 +31,7 @@ raw は法人番号をキーにした incremental モデルで、2系統で更�
 `scripts/build.sh` は公開中の apply ブランチを `fdl clone` してから取り込み・ビルドし、`fdl commit` と `fdl push` で公開する（`shared/scripts/build-fdl.sh`）。説明は `tabledoc.yml` と、モデルの隣の `<model>.tabledoc.yml` に書く。手元で実行するときは、queria.io で発行したトークンを `FDL_TOKEN` に渡す。GitHub Actions では OIDC で取得する。
 
 ```bash
-git submodule update --init
+git clone --depth=1 https://github.com/queria-io/dataset-shared.git shared
 uv sync
 SYNC_MODE=full        FDL_TOKEN=... scripts/build.sh   # 全件フル
 SYNC_MODE=incremental HOUJIN_BANGOU_APP_ID=... FDL_TOKEN=... scripts/build.sh   # 日次差分の未取込分と過去分の続き
